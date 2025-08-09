@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: banco-postgres
+spec:
+  selector:
+    matchLabels:
+      app: banco-postgres
+  template:
+    metadata:
+      labels:
+        app: banco-postgres
+    spec:
+      containers:
+      - name: myapp
+        image: postgres:17.5-alpine3.22
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: secret-kubenews
+              key: USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret-kubenews
+              key: PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: secret-kubenews
+              key: DB
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: banco-postgres
+spec:
+  selector:
+    app: banco-postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubenews
+spec:
+  selector:
+    matchLabels:
+      app: kubenews
+  template:
+    metadata:
+      labels:
+        app: kubenews
+    spec:
+      containers:
+      - name: kubenews
+        image: rangelcr/kubenews:v1
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: secret-kubenews
+              key: USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret-kubenews
+              key: PASSWORD
+        - name: DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: secret-kubenews
+              key: DB              
+        - name: DB_HOST
+          value: banco-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubenews
+spec:
+  selector:
+    app: kubenews
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer
